@@ -106,6 +106,41 @@ def Show_Start_Interface(Demo, width, height):
 			elif event.type == pygame.KEYDOWN:
 				return
 
+#真人玩家链表
+
+
+
+#电脑玩家链表数据
+class EnemyClass(pygame.sprite.Sprite):
+	def __init__(self):
+		pygame.sprite.Sprite.__init__(self)
+		# 电脑玩家的朝向(-2到2)
+		self.direction = 0
+		self.imgs = ["./images/enemy_forward.png", "./images/enemy_right1.png", "./images/enemy_right2.png", "./images/enemy_left2.png", "./images/enemy_left1.png"]
+		self.person = pygame.image.load(self.imgs[self.direction])
+		self.rect = self.person.get_rect()
+		self.rect.center = [320, 50]				#初始化人物位置（比真人玩家稍微后面50）
+		self.speed = [self.direction, 6-abs(self.direction)*2]
+	# 改变滑雪者的朝向
+	# 负数为向左，正数为向右，0为向前
+	def turn(self, num):
+		self.direction += num
+		self.direction = max(-2, self.direction)#方向限幅
+		self.direction = min(2, self.direction)
+		center = self.rect.center#中心坐标
+		self.person = pygame.image.load(self.imgs[self.direction])#图片状态
+		self.rect = self.person.get_rect()
+		self.rect.center = center
+		self.speed = [self.direction, 6-abs(self.direction)*2]
+		return self.speed
+	# 移动滑雪者
+	def move(self):
+		self.rect.centerx += self.speed[0]
+		self.rect.centerx = max(20, self.rect.centerx)
+		self.rect.centerx = min(620, self.rect.centerx)
+	# def chase(self):#追踪真人玩家的一个进程，还没想好怎么写
+
+#收藏物品序列
 
 # 主程序
 def main():
@@ -120,11 +155,15 @@ def main():
 	pygame.mixer.music.play(-1)
 	# 屏幕
 	screen = pygame.display.set_mode([640, 640])
-	pygame.display.set_caption('滑雪游戏-公众号:Charles的皮卡丘')
+	pygame.display.set_caption('数据结构作业--滑雪')
 	# 主频
 	clock = pygame.time.Clock()
 	# 滑雪者
 	skier = SkierClass()
+
+	#电脑玩家
+	enemy = EnemyClass()
+
 	# 记录滑雪的距离
 	distance = 0
 	# 创建障碍物
@@ -146,7 +185,9 @@ def main():
 	def update():
 		screen.fill([255, 255, 255])
 		pygame.display.update(obstacles.draw(screen))
+		screen.blit(enemy.person, enemy.rect)#人物的创建
 		screen.blit(skier.person, skier.rect)
+
 		screen.blit(score_text, [10, 10])
 		pygame.display.flip()
 	while True:
@@ -157,9 +198,12 @@ def main():
 			if event.type == pygame.KEYDOWN:
 				if event.key == pygame.K_LEFT or event.key == pygame.K_a:
 					speed = skier.turn(-1)
+					# speed = enemy.turn(-1)
 				elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
 					speed = skier.turn(1)
+					# speed = enemy.turn(1)
 		skier.move()
+		enemy.move()
 		distance += speed[1]
 		if distance >= 640 and obstaclesflag == 0:
 			obstaclesflag = 1
@@ -183,7 +227,7 @@ def main():
 				skier.person = pygame.image.load("./images/skier_fall.png")
 				update()
 				# 摔倒后暂停一会再站起来
-				pygame.time.delay(1000)
+				pygame.time.delay(600)
 				skier.person = pygame.image.load("./images/skier_forward.png")
 				skier.direction = 0
 				speed = [0, 6]
