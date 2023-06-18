@@ -68,7 +68,7 @@ def create_obstacles(s, e, num=10):
 		if location not in locations:
 			locations.append(location)
 			attribute = random.choice(["tree", "flag"])
-			img_path = './images/small_tree.png' if attribute=="tree" else './images/tree.png'
+			img_path = './images/small_tree.png' if attribute=="tree" else './images/flag.png'
 			obstacle = ObstacleClass(img_path, location, attribute)
 			obstacles.add(obstacle)
 	return obstacles
@@ -103,7 +103,7 @@ def Show_Start_Interface(Demo, width, height):
 	Demo.fill((255, 255, 255))
 	tfont = pygame.font.Font('./font/simkai.ttf', width//4)
 	cfont = pygame.font.Font('./font/simkai.ttf', width//20)
-	title = tfont.render(u'滑雪游戏', True, (255, 0, 0))
+	title = tfont.render(u'滑雪', True, (255, 0, 0))
 	content = cfont.render(u'按任意键开始游戏', True, (0, 0, 255))
 	trect = title.get_rect()
 	trect.midtop = (width/2, height/10)
@@ -133,7 +133,8 @@ class EnemyClass(pygame.sprite.Sprite):
 		self.person = pygame.image.load(self.imgs[self.direction])
 		self.rect = self.person.get_rect()
 		self.rect.center = [320, 50]				#初始化人物位置
-		
+		self.livejug = 0
+		self.time = 0
 		#todo优化初始化数值
 		self.speed = 0
 		self.distance = 0
@@ -166,7 +167,7 @@ class EnemyClass(pygame.sprite.Sprite):
 
 	#todo追踪真人玩家--添加树结构和算法
 	def chase(self,x1,x2,y1,y2) :
-		self.speed = 2
+		self.speed = 1
 		 # 计算目标点与起始点之间的距离和角度
 		self.distance = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 		self.angle = math.atan2(y1 - y2, x1 - x2)
@@ -186,14 +187,16 @@ class EnemyClass(pygame.sprite.Sprite):
 		self.rect.centerx += self.step_x
 		self.rect.centerx = max(20, self.rect.centerx)
 		self.rect.centerx = min(620, self.rect.centerx)
-	# def rebrith(self,flag): #初始敌人位置
-	# 	self.rect.center = [320, 50]
+	def rebirth(self): #初始敌人位置
+		# self.rect.center = [320, 50]
+		self.rect.centerx = 320
+		self.rect.centery = 50
 		
 
 
 
 def hit_check(x1,x2,y1,y2): #敌我之间的碰撞检测
-	if abs(x1-x2)<=5 and (abs(y1-y2)-32) <= 5 :#todo有神奇的偏移量
+	if abs(x1-x2)<=5 and (abs(y1-y2)-32) <= 5 :#todo有神必的偏移量
 		return True
 	else :
 		return False
@@ -228,6 +231,8 @@ def main():
 
 	#电脑玩家
 	enemy = EnemyClass()
+	#enemy.livejug = 0应该包含了
+
 
 	# 记录滑雪的距离
 	distance = 0
@@ -250,12 +255,8 @@ def main():
 	score = 0
 	score_text = font.render("Score: "+str(score), 1, (0, 0, 0))
 
-	#敌我碰撞显示
-	if hit_check(skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y):
-		pis_hit = "hit!"
-	else :
-		pis_hit = "chasing"
-	poeple_text = font.render("loc:"+str(pis_hit),1,(0,0,0))
+	#敌我相关信息显示
+	pfont = pygame.font.Font(None, 25)
 
 	# 速度
 	speed = [0, 6]
@@ -273,7 +274,7 @@ def main():
 		screen.blit(skier.person, skier.rect)
 		#文字创建
 		screen.blit(score_text, [10, 10])
-		screen.blit(poeple_text, [50, 50])
+		screen.blit(poeple_text, [10, 50])
 
 		pygame.display.flip()
 	while True:
@@ -291,8 +292,9 @@ def main():
 		enemy.offset_jug (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
 
 		#调试输出 
-		print(abs(skier.rect.x-enemy.rect.x),abs(skier.rect.y-enemy.rect.y))
+		# print(abs(skier.rect.x-enemy.rect.x),abs(skier.rect.y-enemy.rect.y))
 		# print(skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
+
 
 		distance += speed[1]
 		if distance >= 640 and obstaclesflag == 0:
@@ -310,30 +312,28 @@ def main():
 		for obstacle in obstacles:
 			obstacle.move(distance)
 		#todo--非常麻烦的敌人循环出现的功能实现
-		start_time = 0
+			#敌我碰撞检测
+		pis_hit = hit_check(skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
 		e_hit = pygame.sprite.spritecollide(enemy, obstacles, True)
-		flag = 0
-		time = 1
-		if e_hit or flag == 1 :
+
+		if e_hit or pis_hit or enemy.livejug == 1:
 			enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
-			# eis_hit = "enemy_dead"
-			# flag = 1
+			if e_hit:
+				eis_hit = "enemy is dead +50"
+				score = score + 50
+			elif pis_hit:
+				eis_hit = "enemy got you -50"
+				score = score - 50
+			enemy.livejug = 1
+			enemy.rebirth()
+			enemy.livejug = 0
 
-			# if time == 1:
-			# 	# enemy.rebrith()
-			# 	# start_time = time.time()  # 记录开始时间
-			# 	time = 0
-			# current_time = time.time()
-			# if abs(start_time - current_time) >= 300:
-			# 	enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
-			flag = 0
-
-		elif flag == 0:
-			eis_hit = "still_following_you"
+		else :
+			eis_hit = "is chasing you"
 			enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
 		#敌树碰撞反馈
-		poeple_text = font.render("loc:"+str(eis_hit),1,(0,0,0))
-	
+		poeple_text = pfont.render("enemy:"+str(eis_hit),1,(0,0,0))
+		print(enemy.livejug)
 		
 		# todo碰撞检测--加入收藏物序列
 		is_hit = pygame.sprite.spritecollide(skier, obstacles, False)
@@ -353,7 +353,7 @@ def main():
 				obstacles.remove(is_hit[0])
 		score_text = font.render("Score: "+str(score), 1, (0, 0, 0))
 
-		#敌我碰撞检测
+			#敌我碰撞检测
 		# if hit_check(skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y):
 		# 	pis_hit = "hit!"
 		# else :
