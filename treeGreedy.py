@@ -93,7 +93,7 @@ def huffman_decoding(encoded_data, root):
     return decoded_data
 
 # 测试
-data = "AABBBCCCCDDDDD"
+data = "你好好打发时间速度放缓金克拉速度放缓就开始"
 encoded_data, tree_root = huffman_encoding(data)
 decoded_data = huffman_decoding(encoded_data, tree_root)
 

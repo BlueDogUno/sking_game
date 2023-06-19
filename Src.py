@@ -7,35 +7,68 @@ import time
 from pygame.locals import *
 
 
+class TreeNode:
+    def __init__(self, value):
+        self.value = value
+        self.children = []
+
+class Node:
+	def __init__(self, data):
+		self.data = data
+		self.next = None
+
+class LinkedList:
+	def __init__(self):
+		self.head = None
+
+	def add(self, data):
+		new_node = Node(data)
+		new_node.next = self.head
+		self.head = new_node
+
+	def get(self, index):
+		current = self.head
+		for i in range(index):
+			if current is None:
+				return None
+			current = current.next
+		return current.data
+
 # 滑雪者类
 class SkierClass(pygame.sprite.Sprite):
 	def __init__(self):
 		pygame.sprite.Sprite.__init__(self)
-		# 滑雪者的朝向(-2到2)
+# 滑雪者的朝向(-2到2)
 		self.direction = 0
-		self.imgs = ["./images/small_skier_forward.png", "./images/small_skier_right1.png", "./images/small_skier_right2.png", "./images/small_skier_left2.png", "./images/small_skier_left1.png"]
-		self.person = pygame.image.load(self.imgs[self.direction])
+		self.imgs = LinkedList()
+		self.imgs.add("./images/small_skier_right2.png")
+		self.imgs.add("./images/small_skier_right1.png")
+		self.imgs.add("./images/small_skier_forward.png")
+		self.imgs.add("./images/small_skier_left1.png")
+		self.imgs.add("./images/small_skier_left2.png")
+		self.person = pygame.image.load(self.imgs.get(self.direction+2))
 		self.rect = self.person.get_rect()
-		self.rect.center = [320, 350] #todo 人物初始位置的确定
+		self.rect.center = [320, 350]
 		self.speed = [self.direction, 6-abs(self.direction)*2]
-	# 改变滑雪者的朝向
-	# 负数为向左，正数为向右，0为向前
+
+# 改变滑雪者的朝向
+# 负数为向左，正数为向右，0为向前
 	def turn(self, num):
 		self.direction += num
 		self.direction = max(-2, self.direction)
 		self.direction = min(2, self.direction)
 		center = self.rect.center
-		self.person = pygame.image.load(self.imgs[self.direction])
+		self.person = pygame.image.load(self.imgs.get(self.direction+2))
 		self.rect = self.person.get_rect()
 		self.rect.center = center
 		self.speed = [self.direction, 6-abs(self.direction)*2]
 		return self.speed
-	# 移动滑雪者
+
+# 移动滑雪者
 	def move(self):
 		self.rect.centerx += self.speed[0]
 		self.rect.centerx = max(20, self.rect.centerx)
 		self.rect.centerx = min(620, self.rect.centerx)
-
 
 # 障碍物类
 # Input:
@@ -103,8 +136,11 @@ def Show_Start_Interface(Demo, width, height):
 	Demo.fill((255, 255, 255))
 	tfont = pygame.font.Font('./font/simkai.ttf', width//4)
 	cfont = pygame.font.Font('./font/simkai.ttf', width//20)
-	title = tfont.render(u'滑雪', True, (255, 0, 0))
+	# infont = pygame.font.Font('./font/simkai.ttf', width//40)
+	title = tfont.render(u'极速滑雪', True, (255, 0, 0))
 	content = cfont.render(u'按任意键开始游戏', True, (0, 0, 255))
+	#玩法介绍
+	# introduce = infont.reader(u'躲避树和敌人，拿旗加分')
 	trect = title.get_rect()
 	trect.midtop = (width/2, height/10)
 	crect = content.get_rect()
@@ -121,6 +157,11 @@ def Show_Start_Interface(Demo, width, height):
 
 #真人玩家链表
 
+def hit_check(x1,x2,y1,y2): #敌我之间的碰撞检测
+	if abs(x1-x2)<=5 and (abs(y1-y2)-32) <= 5 :#todo有神必的偏移量
+		return True
+	else :
+		return False
 
 
 #电脑玩家链表数据
@@ -136,7 +177,7 @@ class EnemyClass(pygame.sprite.Sprite):
 		self.livejug = 0
 		self.time = 0
 		#todo优化初始化数值
-		self.speed = 0
+		self.speed = 1
 		self.distance = 0
 		self.angle = 0
 		self.step_x = 0
@@ -151,7 +192,7 @@ class EnemyClass(pygame.sprite.Sprite):
 			if  self.LRoffset < 0:
 				self.direction = 4
 			else :
-				self.direction = 3
+				self.direction = -2
 
 		elif x1 > x2 and abs(x1-x2) > 20:
 			if self.LRoffset < 0 :
@@ -167,7 +208,7 @@ class EnemyClass(pygame.sprite.Sprite):
 
 	#todo追踪真人玩家--添加树结构和算法
 	def chase(self,x1,x2,y1,y2) :
-		self.speed = 1
+		# self.speed = 1
 		 # 计算目标点与起始点之间的距离和角度
 		self.distance = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 		self.angle = math.atan2(y1 - y2, x1 - x2)
@@ -187,22 +228,77 @@ class EnemyClass(pygame.sprite.Sprite):
 		self.rect.centerx += self.step_x
 		self.rect.centerx = max(20, self.rect.centerx)
 		self.rect.centerx = min(620, self.rect.centerx)
+
 	def rebirth(self): #初始敌人位置
-		# self.rect.center = [320, 50]
 		self.rect.centerx = 320
 		self.rect.centery = 50
+
+	#通过贪心算法实现追击功能
+	def calculate_distance(self,ddirection,x1,x2,y1,y2):
+		# self.speed = 2
+		if ddirection == "right":
+			x2 = x2 + self.speed
+		elif ddirection == "left":
+			x2 = x2 - self.speed
+		elif ddirection == "down":
+			y2 = y2 + self.speed
+		elif ddirection == "up":
+			y2 = y2 -self.speed
+
+		new_distance = math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
+		return new_distance
+	def move(self,direction):
+		if direction =="right":
+			self.rect.centerx += self.speed
+			self.rect.centerx = max(20, self.rect.centerx)
+			self.rect.centerx = min(620, self.rect.centerx)
+		elif direction =="left":
+			self.rect.centerx -= self.speed
+			self.rect.centerx = max(20, self.rect.centerx)
+			self.rect.centerx = min(620, self.rect.centerx)
+		elif direction =="down":
+			self.rect.centery += self.speed
+		elif direction =="up":
+			self.rect.centery += self.speed
+	def greedychase(self,x1,x2,y1,y2):
+		# 计算当前位置到目标位置的距离
+		self.distance = self.calculate_distance("raw",x1,x2,y1,y2)
+		# distance = calculate_distance(tracking_position, target_position)
+		# 获取所有可行的移动方向
+		self.possible_directions = []
+
+		if x2 < x1:
+			self.possible_directions.append("right")
+		elif x2 > x1:
+			self.possible_directions.append("left")
+		if y2 < y1:
+			self.possible_directions.append("up")
+		elif y2 > y1:
+			self.possible_directions.append("down")
+		# 创建一个根节点
+		root = TreeNode('Root')
+		current_node = root
+
+		# 添加子节点，表示每个可能的方向
+		possible_directions = ['up', 'down', 'left', 'right']
+		for direction in possible_directions:
+			new_node = TreeNode(direction)
+			current_node.children.append(new_node)
+
+		# 将最优方向作为子节点
+		best_direction = None
+		min_distance = float('inf')
+		for child in current_node.children:
+			new_distance = self.calculate_distance(child.value, x1, x2, y1, y2)
+			if new_distance < min_distance:
+				best_direction = child
+				min_distance = new_distance
+
+		# 更新最佳方向属性
+		current_node.best_direction = best_direction.value
+		# 更新追踪Sprite的位置
+		self.move(current_node.best_direction)
 		
-
-
-
-def hit_check(x1,x2,y1,y2): #敌我之间的碰撞检测
-	if abs(x1-x2)<=5 and (abs(y1-y2)-32) <= 5 :#todo有神必的偏移量
-		return True
-	else :
-		return False
-		
-			
-
 #todo创建收藏物品序列--栈
 class Collections():
 	def __init__(self):
@@ -232,7 +328,6 @@ def main():
 	#电脑玩家
 	enemy = EnemyClass()
 	#enemy.livejug = 0应该包含了
-
 
 	# 记录滑雪的距离
 	distance = 0
@@ -279,6 +374,7 @@ def main():
 		pygame.display.flip()
 	while True:
 		# 左右键控制人物方向
+		# print(enemy.best_direction)
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				sys.exit()
@@ -311,35 +407,49 @@ def main():
 		# 用于碰撞检测
 		for obstacle in obstacles:
 			obstacle.move(distance)
-		#todo--非常麻烦的敌人循环出现的功能实现
-			#敌我碰撞检测
+		#敌我碰撞检测
 		pis_hit = hit_check(skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
 		e_hit = pygame.sprite.spritecollide(enemy, obstacles, True)
 
 		if e_hit or pis_hit or enemy.livejug == 1:
-			enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
+			# enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
+			enemy.greedychase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
 			if e_hit:
-				eis_hit = "enemy is dead +50"
-				score = score + 50
+				if e_hit[0].attribute == "tree" and not e_hit[0].passed:
+					eis_hit = "enemy is dead +50"
+					enemy.rebirth()
+					score = score + 50
 			elif pis_hit:
 				eis_hit = "enemy got you -50"
-				score = score - 50
+				enemy.rebirth()
+				# score = score - 50
+				score = 0 
+				skier.person = pygame.image.load("./images/small_skier_fall.png")
+				update()
+				# 摔倒后暂停一会再站起来
+				pygame.time.delay(600)
+				skier.person = pygame.image.load("./images/small_skier_forward.png")
+				skier.direction = 0
+				speed = [0, 6]
+				# is_hit[0].passed = True
 			enemy.livejug = 1
-			enemy.rebirth()
+			# enemy.rebirth()
 			enemy.livejug = 0
 
 		else :
 			eis_hit = "is chasing you"
-			enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
+			# enemy.chase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
+			enemy.greedychase (skier.rect.x,enemy.rect.x,skier.rect.y,enemy.rect.y)
 		#敌树碰撞反馈
 		poeple_text = pfont.render("enemy:"+str(eis_hit),1,(0,0,0))
-		print(enemy.livejug)
+		# print(enemy.livejug)
 		
-		# todo碰撞检测--加入收藏物序列
+		# 碰撞检测
 		is_hit = pygame.sprite.spritecollide(skier, obstacles, False)
 		if is_hit:
 			if is_hit[0].attribute == "tree" and not is_hit[0].passed:
 				score -= 50
+				score = max(0,score)
 				skier.person = pygame.image.load("./images/small_skier_fall.png")
 				update()
 				# 摔倒后暂停一会再站起来
