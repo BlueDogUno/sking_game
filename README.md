@@ -17,9 +17,8 @@
 ## 文件构成
 主要源码在Src.py中，其他文件夹如font、image、music均为素材文件
 ## 使用方法
-非常简单
----
-1.安装pyhon环境
-2.通过pip安装pygame
-3.启动
----
+  ---
+    1.安装pyhon环境
+    2.通过pip安装pygame
+    3.启动
+  ---
